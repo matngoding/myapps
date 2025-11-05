@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — arsip Apps</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen py-6">
+  <div class="max-w-6xl mx-auto px-4">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-semibold">Admin Dashboard — arsip Apps</h1>
+      <div class="flex items-center gap-3">
+        <input id="q" placeholder="Search reporter / description" class="p-2 rounded bg-gray-800 border border-gray-700" />
+        <button id="search" class="bg-indigo-600 px-3 py-2 rounded">Search</button>
+        <button id="refresh" class="px-3 py-2 border rounded">Refresh</button>
+        <button id="logout" class="px-3 py-2 border rounded">Logout</button>
+      </div>
+    </header>
+
+    <div class="bg-gray-800 rounded shadow overflow-auto">
+      <table class="min-w-full">
+        <thead class="bg-gray-700">
+          <tr>
+            <th class="p-3 text-left">Waktu</th>
+            <th class="p-3 text-left">Pelapor</th>
+            <th class="p-3 text-left">Jenis</th>
+            <th class="p-3 text-left">Deskripsi</th>
+            <th class="p-3 text-left">Foto</th>
+            <th class="p-3 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbl" class="divide-y"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyZBB_AP8TbQvXW4Ez1m5YyS3f8Hb3hzcxi4oe7Suyf3ge05p6BJ1UKd1j5ZbNQcFH-/exec';
+
+const user = JSON.parse(localStorage.getItem('arsip_user') || 'null');
+if (!user || user.role !== 'admin') {
+  alert('Akses ditolak. Silakan login sebagai admin.');
+  location.href = '/login.html';
+}
+
+document.getElementById('logout').addEventListener('click', ()=>{
+  localStorage.removeItem('arsip_user');
+  location.href = '/';
+});
+
+async function load(q='') {
+  const params = q ? '?q=' + encodeURIComponent(q) : '';
+  // Our Apps Script supports doGet?action=list or doPost action=list; we used doGet earlier.
+  // We'll call via GET:
+  try {
+    const url = API_URL + '?action=list';
+    const res = await fetch(url);
+    const rows = await res.json();
+    // rows is array of objects (Timestamp, Nama, JenisKejadian, Deskripsi, FotoURL, Status) depending on implementation
+    const tbl = document.getElementById('tbl');
+    tbl.innerHTML = '';
+    if (!Array.isArray(rows)) {
+      // older script returned {ok:true,reports:[]}
+      if (rows.ok && Array.isArray(rows.reports)) {
+        populate(rows.reports);
+      } else {
+        tbl.innerHTML = '<tr><td class="p-3" colspan="6">No data</td></tr>';
+      }
+      return;
+    }
+    // filter by q
+    const filtered = q ? rows.filter(r => (r.Nama||'').toLowerCase().includes(q.toLowerCase()) || (r.Deskripsi||'').toLowerCase().includes(q.toLowerCase()) || (r.JenisKejadian||'').toLowerCase().includes(q.toLowerCase())) : rows;
+    if (filtered.length === 0) {
+      tbl.innerHTML = '<tr><td class="p-3" colspan="6">No data</td></tr>';
+      return;
+    }
+    for (const r of filtered.reverse()) {
+      const tr = document.createElement('tr');
+      const time = new Date(r.Timestamp).toLocaleString();
+      tr.innerHTML = `<td class="p-3">${time}</td>
+        <td class="p-3">${escapeHtml(r.Nama)}</td>
+        <td class="p-3">${escapeHtml(r.JenisKejadian || r.Jenis || r.jenis)}</td>
+        <td class="p-3">${escapeHtml(r.Deskripsi || r.description || r.des)}</td>
+        <td class="p-3"><a class="text-indigo-400 underline" href="${r.FotoURL || r.Foto || r.foto || r.url}" target="_blank">Lihat</a></td>
+        <td class="p-3">${escapeHtml(r.Status || r.status || '')}</td>`;
+      tbl.appendChild(tr);
+    }
+  } catch (err) {
+    const tbl = document.getElementById('tbl');
+    tbl.innerHTML = '<tr><td class="p-3 text-red-400" colspan="6">Error: ' + err.message + '</td></tr>';
+  }
+}
+
+function populate(arr) {
+  const tbl = document.getElementById('tbl');
+  tbl.innerHTML = '';
+  for (const r of arr.reverse()) {
+    const tr = document.createElement('tr');
+    const time = new Date(r.timestamp || r.Timestamp).toLocaleString();
+    tr.innerHTML = `<td class="p-3">${time}</td>
+      <td class="p-3">${escapeHtml(r.reporter || r.Nama || '')}</td>
+      <td class="p-3">${escapeHtml(r.jenis || r.JenisKejadian || '')}</td>
+      <td class="p-3">${escapeHtml(r.description || r.Deskripsi || '')}</td>
+      <td class="p-3"><a class="text-indigo-400 underline" href="${r.url || r.FotoURL || r.Foto}" target="_blank">Lihat</a></td>
+      <td class="p-3">${escapeHtml(r.status || r.Status || '')}</td>`;
+    tbl.appendChild(tr);
+  }
+}
+
+function escapeHtml(s) {
+  return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('refresh').addEventListener('click', ()=> load());
+document.getElementById('search').addEventListener('click', ()=> load(document.getElementById('q').value.trim()));
+load();
+</script>
+</body>
+</html>

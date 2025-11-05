@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login — arsip Apps</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center">
+  <div class="max-w-md w-full mx-auto p-6">
+    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+      <h1 class="text-2xl font-semibold mb-4">arsip Apps — Login</h1>
+      <form id="loginForm" class="space-y-4">
+        <input id="email" placeholder="Email" class="w-full p-3 rounded bg-gray-900 border border-gray-700" />
+        <input id="password" type="password" placeholder="Password" class="w-full p-3 rounded bg-gray-900 border border-gray-700" />
+        <div class="flex gap-2">
+          <button type="submit" class="bg-indigo-600 px-4 py-2 rounded">Login</button>
+          <a href="/" class="text-indigo-400 self-center">Kembali</a>
+        </div>
+        <div id="msg" class="text-sm text-red-400 mt-2"></div>
+      </form>
+    </div>
+    <p class="text-sm text-gray-500 mt-4">Admin: gunakan akun di sheet Users.</p>
+  </div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyZBB_AP8TbQvXW4Ez1m5YyS3f8Hb3hzcxi4oe7Suyf3ge05p6BJ1UKd1j5ZbNQcFH-/exec';
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  document.getElementById('msg').textContent = '';
+
+  if (!email || !password) { document.getElementById('msg').textContent = 'Email & password wajib.'; return; }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', email, password })
+    });
+    const j = await res.json();
+    if (j.success || j.ok) {
+      // toleransi: some script returns {ok:true,email,role} or {success:true,role}
+      const role = j.role || j.role || (j.success ? 'user' : null) || j.role;
+      const userRole = j.role || (j.role ? j.role : (j.role === undefined && j.role) );
+      // safe fallback:
+      const r = j.role || j.role || (j.role ? j.role : (j.role === undefined? 'user': j.role));
+      // simpler: prefer j.role else (if j.success true) set 'user'
+      const finalRole = j.role ? j.role : (j.success ? 'user' : null);
+      if (!finalRole) {
+        document.getElementById('msg').textContent = 'Login berhasil, tapi role tidak ditemukan.';
+        return;
+      }
+      localStorage.setItem('arsip_user', JSON.stringify({ email, role: finalRole }));
+      if (finalRole === 'admin') location.href = '/admin.html';
+      else location.href = '/';
+    } else {
+      document.getElementById('msg').textContent = j.error || 'Login gagal. Periksa email/password.';
+    }
+  } catch (err) {
+    document.getElementById('msg').textContent = 'Terjadi error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>

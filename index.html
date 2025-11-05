@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>arsip Apps — Lapor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen py-8">
+  <div class="max-w-3xl mx-auto px-4">
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">arsip Apps — Lapor Kejadian</h1>
+      <div>
+        <a href="/login.html" class="text-indigo-400">Login</a>
+      </div>
+    </header>
+
+    <div class="bg-gray-800 p-6 rounded shadow">
+      <form id="reportForm" class="space-y-4">
+        <input id="nama" placeholder="Nama pelapor" class="w-full p-3 rounded bg-gray-900 border border-gray-700" />
+        <select id="jenis" class="w-full p-3 rounded bg-gray-900 border border-gray-700">
+          <option value="">Pilih jenis kejadian</option>
+          <option value="Kebakaran">Kebakaran</option>
+          <option value="Kecelakaan">Kecelakaan</option>
+          <option value="Bencana">Bencana</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+        <textarea id="deskripsi" rows="4" placeholder="Deskripsi..." class="w-full p-3 rounded bg-gray-900 border border-gray-700"></textarea>
+        <div>
+          <input id="photo" type="file" accept="image/*" class="text-sm text-gray-400" />
+        </div>
+        <div class="flex gap-2">
+          <button id="submitBtn" class="bg-indigo-600 px-4 py-2 rounded">Kirim Laporan</button>
+          <button id="resetBtn" type="button" class="px-4 py-2 border rounded">Reset</button>
+        </div>
+        <div id="msg" class="text-sm mt-2"></div>
+      </form>
+    </div>
+  </div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyZBB_AP8TbQvXW4Ez1m5YyS3f8Hb3hzcxi4oe7Suyf3ge05p6BJ1UKd1j5ZbNQcFH-/exec';
+
+document.getElementById('resetBtn').addEventListener('click', ()=> {
+  document.getElementById('reportForm').reset();
+  document.getElementById('msg').textContent = '';
+});
+
+document.getElementById('reportForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Mengirim...';
+  document.getElementById('msg').textContent = '';
+
+  const nama = document.getElementById('nama').value.trim();
+  const jenis = document.getElementById('jenis').value;
+  const deskripsi = document.getElementById('deskripsi').value.trim();
+  const fileInput = document.getElementById('photo');
+  const file = fileInput.files[0];
+
+  if (!nama || !jenis || !deskripsi || !file) {
+    document.getElementById('msg').textContent = 'Lengkapi semua field termasuk foto.';
+    btn.disabled = false; btn.textContent = 'Kirim Laporan';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function() {
+    // reader.result seperti "data:image/jpeg;base64,......"
+    const dataUrl = reader.result;
+    const base64 = dataUrl.split(',')[1]; // KIRIM tanpa data:... header
+    const payload = {
+      action: 'lapor',
+      nama,
+      jenis,
+      deskripsi,
+      foto: base64,
+      namaFile: file.name
+    };
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json();
+      if (j.success || j.ok) {
+        document.getElementById('msg').textContent = 'Sukses mengirim laporan.';
+        document.getElementById('reportForm').reset();
+      } else {
+        document.getElementById('msg').textContent = 'Gagal: ' + (j.error || JSON.stringify(j));
+      }
+    } catch (err) {
+      document.getElementById('msg').textContent = 'Error: ' + err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Kirim Laporan';
+    }
+  };
+  reader.readAsDataURL(file);
+});
+</script>
+</body>
+</html>
